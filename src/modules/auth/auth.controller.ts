@@ -1,8 +1,7 @@
 import { Public } from 'src/decorators/public.decorator'
-import { IRequest } from 'src/interfaces/request.interface'
-import { Controller, Request, Post, UseGuards, HttpCode } from '@nestjs/common'
+import { Controller, Post, HttpCode, Body } from '@nestjs/common'
 import { AuthService } from './auth.service'
-import { LocalAuthGuard } from './local-auth.guard'
+import { LoginDto } from './dto/login.dto'
 
 @Controller('auth')
 export class AuthController {
@@ -10,10 +9,8 @@ export class AuthController {
 
   @Post('login')
   @Public()
-  @UseGuards(LocalAuthGuard)
   @HttpCode(200)
-  async login(@Request() req: IRequest) {
-    const { id, email, roles } = req.user
-    return this.authService.login({ id, email, roles })
+  login(@Body() data: LoginDto) {
+    return this.authService.login(data)
   }
 }

@@ -1,4 +1,6 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common'
+import { Roles } from 'src/decorators/roles.decorator'
+import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common'
+import { Role } from '@prisma/client'
 import { CreateUserDto } from './dto/create-user.dto'
 import { UsersService } from './users.service'
 
@@ -7,27 +9,25 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto)
+  create(@Body() data: CreateUserDto) {
+    return this.usersService.createUser(data)
   }
 
   @Get()
+  @Roles(Role.admin)
   findAll() {
-    return this.usersService.findAll()
+    return this.usersService.findAllUsers()
   }
 
-  @Get(':email')
-  findByEmail(@Param('email') email: string) {
-    return this.usersService.findByEmail(email)
+  @Get(':id')
+  @Roles(Role.admin)
+  findUnique(@Param('id') id: string) {
+    return this.usersService.findUserById(id)
   }
 
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-  //   return this.usersService.update(id, updateUserDto)
-  // }
-
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.usersService.remove(id)
-  // }
+  @Delete(':id')
+  @Roles(Role.admin)
+  delete(@Param('id') id: string) {
+    return this.usersService.deleteUser(id)
+  }
 }

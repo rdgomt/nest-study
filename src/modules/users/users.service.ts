@@ -1,57 +1,94 @@
 import { hash, compare } from 'bcrypt'
-import { Repository } from 'typeorm'
-import { Injectable, NotFoundException } from '@nestjs/common'
-import { InjectRepository } from '@nestjs/typeorm'
+import { Injectable } from '@nestjs/common'
+import { Prisma, User } from '@prisma/client'
+import { PrismaService } from '../prisma/prisma.service'
 import { CreateUserDto } from './dto/create-user.dto'
-import { User } from './entities/user.entity'
-import { IUser } from './interfaces/user.interface'
 
 @Injectable()
 export class UsersService {
-  constructor(
-    @InjectRepository(User)
-    private usersRepository: Repository<User>
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
-  async create(user: CreateUserDto): Promise<User> {
-    const password = await hash(user.password, 10)
+  async createUser(data: CreateUserDto): Promise<User> {
+    const password = await hash(data.password, 10)
 
-    const createdUser = await this.usersRepository.save({ ...user, password })
-
-    return createdUser
+    return await this.prisma.user.create({
+      data: {
+        ...data,
+        password,
+      },
+    })
   }
 
-  async findAll(): Promise<User[]> {
-    return await this.usersRepository.find()
+  async findAllUsers(): Promise<User[]> {
+    return this.prisma.user.findMany()
   }
 
-  async findByEmail(email: string): Promise<User | NotFoundException> {
-    const user = await this.usersRepository.findOne(null, { where: { email } })
-
-    if (user) return user
-
-    throw new NotFoundException()
+  async findUsers(params: {
+    skip?: number
+    take?: number
+    cursor?: Prisma.UserWhereUniqueInput
+    where?: Prisma.UserWhereInput
+    orderBy?: Prisma.UserOrderByWithRelationInput
+  }): Promise<User[]> {
+    const { skip, take, cursor, where, orderBy } = params
+    return this.prisma.user.findMany({
+      skip,
+      take,
+      cursor,
+      where,
+      orderBy,
+    })
   }
 
-  async findByEmailAndValidatePassword(
+  async findUserById(id: string): Promise<User | null> {
+    return this.prisma.user.findUnique({
+      where: {
+        id,
+      },
+    })
+  }
+
+  async findUserByEmail(email: string): Promise<User | null> {
+    return this.prisma.user.findUnique({
+      where: {
+        email,
+      },
+    })
+  }
+
+  async findUserByEmailAndValidatePassword(
     email: string,
     password: string
-  ): Promise<IUser | null> {
-    const user = await this.usersRepository
-      .createQueryBuilder()
-      .where({ email })
-      .addSelect('User.password')
-      .getOne()
+  ): Promise<User | null> {
+    const user = await this.findUserByEmail(email)
 
     if (user) {
       const isPasswordValid = await compare(password, user.password)
 
       if (user && isPasswordValid) {
-        const { password, ...result } = user
-        return result
+        return user
       }
     }
 
     return null
+  }
+
+  async updateUser(params: {
+    where: Prisma.UserWhereUniqueInput
+    data: Prisma.UserUpdateInput
+  }): Promise<User> {
+    const { where, data } = params
+    return this.prisma.user.update({
+      data,
+      where,
+    })
+  }
+
+  async deleteUser(id: string): Promise<User> {
+    return this.prisma.user.delete({
+      where: {
+        id,
+      },
+    })
   }
 }

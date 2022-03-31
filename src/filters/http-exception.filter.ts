@@ -8,13 +8,13 @@ import {
 } from '@nestjs/common'
 
 @Catch(HttpException)
-class HttpExceptionFilter implements ExceptionFilter {
+export class HttpExceptionFilter implements ExceptionFilter {
   catch(exception: HttpException, host: ArgumentsHost) {
     const ctx = host.switchToHttp()
     const response = ctx.getResponse<IResponse>()
     const request = ctx.getRequest<IRequest>()
     const status = exception.getStatus()
-    const { errors } = exception.getResponse() as any
+    const { meta } = exception.getResponse() as any
 
     response.status(status).json({
       statusCode: status,
@@ -22,9 +22,7 @@ class HttpExceptionFilter implements ExceptionFilter {
       method: request.method,
       path: request.url,
       message: exception.message,
-      errors,
+      meta,
     })
   }
 }
-
-export const httpExceptionFilter = new HttpExceptionFilter()

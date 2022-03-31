@@ -1,6 +1,7 @@
 import helmet from 'helmet'
 import { NestFactory } from '@nestjs/core'
-import { httpExceptionFilter } from './filters/http-exception.filter'
+import { HttpExceptionFilter } from './filters/http-exception.filter'
+import { PrismaClientKnowRequestExceptionFilter } from './filters/prisma-client-know-request-exception.filter'
 import { loggerMiddleware } from './middlewares/logger.middleware'
 import { appConfig } from './modules/app/app.config'
 import { AppModule } from './modules/app/app.module'
@@ -13,7 +14,10 @@ async function bootstrap() {
   app.use(helmet())
   app.use(loggerMiddleware)
   app.useGlobalPipes(validationPipe)
-  app.useGlobalFilters(httpExceptionFilter)
+  app.useGlobalFilters(
+    new HttpExceptionFilter(),
+    new PrismaClientKnowRequestExceptionFilter()
+  )
 
   await app.listen(appConfig().APP_PORT)
 }

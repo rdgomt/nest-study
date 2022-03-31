@@ -3,6 +3,6 @@ import { HttpException, HttpStatus } from '@nestjs/common'
 
 export class InvalidDataException extends HttpException {
   constructor(errors: ValidationError[]) {
-    super({ errors }, HttpStatus.BAD_REQUEST)
+    super({ meta: errors }, HttpStatus.BAD_REQUEST)
   }
 }

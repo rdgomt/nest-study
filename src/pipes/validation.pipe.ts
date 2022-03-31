@@ -7,7 +7,7 @@ const options = {
   forbidNonWhitelisted: true,
   transform: true,
   exceptionFactory: (errors: ValidationError[]) => {
-    return new InvalidDataException(errors)
+    throw new InvalidDataException(errors)
   },
 }
 
