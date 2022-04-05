@@ -3,8 +3,8 @@ import { NestFactory } from '@nestjs/core'
 import { HttpExceptionFilter } from './filters/http-exception.filter'
 import { PrismaClientKnowRequestExceptionFilter } from './filters/prisma-client-know-request-exception.filter'
 import { loggerMiddleware } from './middlewares/logger.middleware'
-import { appConfig } from './modules/app/app.config'
 import { AppModule } from './modules/app/app.module'
+import { EnvService } from './modules/env/env.service'
 import { validationPipe } from './pipes/validation.pipe'
 
 async function bootstrap() {
@@ -19,7 +19,9 @@ async function bootstrap() {
     new PrismaClientKnowRequestExceptionFilter()
   )
 
-  await app.listen(appConfig().APP_PORT)
+  const port = app.get(EnvService).get('APP_PORT')
+
+  await app.listen(port)
 }
 
 bootstrap()

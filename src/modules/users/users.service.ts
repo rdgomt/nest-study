@@ -1,94 +1,83 @@
-import { hash, compare } from 'bcrypt'
-import { Injectable } from '@nestjs/common'
-import { Prisma, User } from '@prisma/client'
-import { PrismaService } from '../database/prisma/prisma.service'
-import { CreateUserDto } from './dto/create-user.dto'
+import {
+  AppMetadata,
+  AuthenticationClient,
+  CreateUserData,
+  ManagementClient,
+  User,
+  UserMetadata,
+  TokenResponse,
+  PasswordGrantOptions,
+} from 'auth0'
+import {
+  BadRequestException,
+  HttpException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common'
+import { EnvService } from '../env/env.service'
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private env: EnvService) {}
 
-  async createUser(data: CreateUserDto): Promise<User> {
-    const password = await hash(data.password, 10)
+  private audience = this.env.get('AUTH_AUTH0_AUDIENCE')
 
-    return await this.prisma.user.create({
-      data: {
+  private credentials = {
+    domain: this.env.get('AUTH_AUTH0_DOMAIN'),
+    clientId: this.env.get('AUTH_AUTH0_CLIENT_ID'),
+    clientSecret: this.env.get('AUTH_AUTH0_CLIENT_SECRET'),
+  }
+
+  private authenticationClient = new AuthenticationClient(this.credentials)
+
+  private managementClient = new ManagementClient(this.credentials)
+
+  async login(data: PasswordGrantOptions): Promise<TokenResponse> {
+    try {
+      return await this.authenticationClient.passwordGrant({
+        audience: this.audience,
+        scope: 'openid',
         ...data,
-        password,
-      },
-    })
-  }
-
-  async findAllUsers(): Promise<User[]> {
-    return this.prisma.user.findMany()
-  }
-
-  async findUsers(params: {
-    skip?: number
-    take?: number
-    cursor?: Prisma.UserWhereUniqueInput
-    where?: Prisma.UserWhereInput
-    orderBy?: Prisma.UserOrderByWithRelationInput
-  }): Promise<User[]> {
-    const { skip, take, cursor, where, orderBy } = params
-    return this.prisma.user.findMany({
-      skip,
-      take,
-      cursor,
-      where,
-      orderBy,
-    })
-  }
-
-  async findUserById(id: string): Promise<User | null> {
-    return this.prisma.user.findUnique({
-      where: {
-        id,
-      },
-    })
-  }
-
-  async findUserByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({
-      where: {
-        email,
-      },
-    })
-  }
-
-  async findUserByEmailAndValidatePassword(
-    email: string,
-    password: string
-  ): Promise<User | null> {
-    const user = await this.findUserByEmail(email)
-
-    if (user) {
-      const isPasswordValid = await compare(password, user.password)
-
-      if (user && isPasswordValid) {
-        return user
+      })
+    } catch (error) {
+      switch (error.name) {
+        case 'ArgumentError':
+          throw new BadRequestException(error.message)
+        case 'invalid_grant':
+          throw new UnauthorizedException("Wrong user's credentials.")
+        case 'unauthorized_client':
+          throw new UnauthorizedException(error.message)
+        default:
+          throw new HttpException(error, 500)
       }
     }
-
-    return null
   }
 
-  async updateUser(params: {
-    where: Prisma.UserWhereUniqueInput
-    data: Prisma.UserUpdateInput
-  }): Promise<User> {
-    const { where, data } = params
-    return this.prisma.user.update({
-      data,
-      where,
-    })
+  async getUsers(): Promise<User<AppMetadata, UserMetadata>[]> {
+    try {
+      return await this.managementClient.getUsers()
+    } catch (error) {
+      throw new HttpException(error, error.statusCode)
+    }
   }
 
-  async deleteUser(id: string): Promise<User> {
-    return this.prisma.user.delete({
-      where: {
-        id,
-      },
-    })
+  async createUser(
+    data: CreateUserData
+  ): Promise<User<AppMetadata, UserMetadata>> {
+    try {
+      return await this.managementClient.createUser(data)
+    } catch (error) {
+      throw new HttpException(error, error.statusCode)
+    }
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    try {
+      const user = await this.managementClient.getUser({ id })
+
+      return await this.managementClient.deleteUser({ id: user.user_id })
+    } catch (error) {
+      throw new HttpException(error, error.statusCode)
+    }
   }
 }

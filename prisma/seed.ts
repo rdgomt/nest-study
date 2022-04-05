@@ -1,13 +1,12 @@
-import { hash } from 'bcrypt'
 import { PrismaClient } from '@prisma/client'
-import { users } from './seeds/users'
+import { posts } from './seeds/posts'
 
 const prisma = new PrismaClient()
 
 async function main() {
-  users.map(async (user) => {
-    await prisma.user.create({
-      data: { ...user, password: await hash(user.password, 10) },
+  posts.map(async (post) => {
+    await prisma.post.create({
+      data: post,
     })
   })
 }

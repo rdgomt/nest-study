@@ -1,33 +1,44 @@
-import { Roles } from 'src/decorators/roles.decorator'
-import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common'
-import { Role } from '@prisma/client'
-import { CreateUserDto } from './dto/create-user.dto'
+import { CreateUserData, PasswordGrantOptions } from 'auth0'
+import { Permissions } from 'src/decorators/permissions.decorator'
+import { Public } from 'src/decorators/public.decorator'
+import { Permission } from 'src/enums/permission.enum'
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+} from '@nestjs/common'
 import { UsersService } from './users.service'
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Post()
-  create(@Body() data: CreateUserDto) {
-    return this.usersService.createUser(data)
+  @Post('login')
+  @Public()
+  @HttpCode(200)
+  login(@Body() data: PasswordGrantOptions) {
+    return this.usersService.login(data)
   }
 
   @Get()
-  // @Roles(Role.admin)
-  findAll() {
-    return this.usersService.findAllUsers()
+  @Permissions(Permission.ReadUsers)
+  getUsers() {
+    return this.usersService.getUsers()
   }
 
-  @Get(':id')
-  // @Roles(Role.admin)
-  findUnique(@Param('id') id: string) {
-    return this.usersService.findUserById(id)
+  @Post()
+  @Permissions(Permission.CreateUsers)
+  createUser(@Body() data: CreateUserData) {
+    return this.usersService.createUser(data)
   }
 
   @Delete(':id')
-  @Roles(Role.admin)
-  delete(@Param('id') id: string) {
+  @Permissions(Permission.DeleteUsers)
+  deleteUser(@Param('id') id: string) {
     return this.usersService.deleteUser(id)
   }
 }
